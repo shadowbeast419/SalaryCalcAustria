@@ -19,17 +19,17 @@ CONSTANTS
 full_time_hours = 38.5
 
 # not taxed, 12 times a year
-monthly_benefits = 160.0
+monthly_benefits = 123.0
 
 # used for x-Axes
-max_x_salary = 4000
+max_x_salary = 6000
 
 # for manual calculation
-part_time_hours = 16.0
+part_time_hours = 20.0
 
 # for manual calculation
 # including monthly benefits
-target_monthly_net_salary = 1200
+target_monthly_net_salary = 1234
 
 # 2021
 # https://www.finanz.at/steuern/lohnsteuertabelle/
