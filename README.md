@@ -1,5 +1,5 @@
 # SalaryCalcAustria
- Python script to find your perfect matching salary and working hours
+ Python script to find your perfect matching salary and working hours.
 
 This script is a shortcut for manually entering numbers inside online gross-net-calculators.
 Just change the constants close to the top of the file and look at the console-output.
