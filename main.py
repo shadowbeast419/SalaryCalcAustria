@@ -8,10 +8,9 @@ Just joking, no copyright whatsoever. However, feedback is always welcome!
 
 
 """
-
+import mplcursors
 import numpy as np
 import matplotlib.pyplot as plt
-
 """
 CONSTANTS
 """
@@ -24,14 +23,14 @@ full_time_hours = 38.5
 monthly_benefits = 0.0
 
 # used for x-Axes
-max_x_salary = 7500
+max_x_salary = 5000.0
 
 # for manual calculation
-target_part_time_hours = 16.0
+target_part_time_hours = 20.0
 
 # for manual calculation
 # including monthly benefits
-target_monthly_net_salary = 1000
+target_monthly_net_salary = 1200
 
 # 2021
 # https://www.finanz.at/steuern/lohnsteuertabelle/
@@ -196,6 +195,7 @@ def holiday_income_tax(gross_salary_monthly):
 def calculate_annual_net_salary_and_taxes(gross_monthly_income_fulltime, working_hours):
     gross_monthly_income = gross_monthly_income_fulltime * (working_hours / full_time_hours)
     gross_yearly_income = gross_monthly_income * 14
+    gross_hourly_income = gross_monthly_income / weeks_per_month / working_hours
 
     # income tax calculation
     income_tax_monthly = income_tax(gross_monthly_income)
@@ -215,17 +215,58 @@ def calculate_annual_net_salary_and_taxes(gross_monthly_income_fulltime, working
     net_hourly_income = net_monthly_income / weeks_per_month / working_hours
 
     return np.array([gross_yearly_income, income_tax_yearly, insurance_tax_yearly,
-                     net_yearly_income, net_monthly_income, net_hourly_income])
+                     net_yearly_income, net_monthly_income, net_hourly_income,
+                     gross_hourly_income])
 
 
 def main_func():
     gross_salary = np.linspace(0, max_x_salary, 400)
-    statistics_matrix = np.zeros((gross_salary.size, 6))
+
+    fig2 = plt.figure(0)
+    fig2.set_dpi(250)
+    ax = plt.axes(projection='3d')
+
+    hour_vector = np.linspace(0.1, full_time_hours * 1.5, gross_salary.size)
+    X, Y = np.meshgrid(gross_salary, hour_vector)
+    Z = np.zeros((gross_salary.size, hour_vector.size))
+
+    optimal_salary_found = False
+    optimal_parameters = np.zeros(shape=(9, 1))
+
+    for x in range(gross_salary.size):
+        for y in range(hour_vector.size):
+            result_array = calculate_annual_net_salary_and_taxes(gross_salary[x], hour_vector[y])
+
+            # Monthly net income with the specified hours
+            Z[x][y] = result_array[4]
+
+            if not optimal_salary_found and Z[x][y] > target_monthly_net_salary \
+                    and hour_vector[y] <= target_part_time_hours:
+                optimal_parameters[0:7, 0] = result_array
+                optimal_parameters[7, 0] = gross_salary[x]
+                optimal_parameters[8, 0] = hour_vector[y]
+                optimal_salary_found = True
+
+    ax.scatter(optimal_parameters[7, 0], optimal_parameters[8, 0], optimal_parameters[4, 0], marker='x')
+
+    ax.set_xlabel('Monthly gross income full-time')
+    ax.set_ylabel('Working hours [h]')
+    ax.set_zlabel('Monthly net income [Euro/month]')
+
+    ax.contour3D(X, Y, Z, 50, cmap='inferno')
+
+    plt.title('Net income progression depending on gross income and working hours')
+    plt.tight_layout()
+
+    mplcursors.cursor()
+    plt.show()
+
+    statistics_matrix = np.zeros((gross_salary.size, 7))
 
     for i in range(gross_salary.size):
         statistics_matrix[i, :] = np.array(calculate_annual_net_salary_and_taxes(gross_salary[i], full_time_hours))
 
-    plt.figure(0)
+    plt.figure(1)
     fig, axs = plt.subplots(2, 1)
     fig.set_dpi(200)
     fig.suptitle('Austria 2021 Gross/Net Salary Overview (14 monthly salaries)')
@@ -237,6 +278,10 @@ def main_func():
     axs[0].plot(gross_salary, statistics_matrix[:, 1], 'c', label='Annual income tax', linestyle='dashed')
     axs[0].plot(gross_salary, statistics_matrix[:, 2], 'b', label='Annual insurance tax', linestyle='dotted')
     axs[0].plot(gross_salary, statistics_matrix[:, 3], 'g', label='Annual net salary')
+
+    if optimal_salary_found:
+        axs[0].axvline(optimal_parameters[6, 0], color='k', linestyle='--')
+
     axs[0].legend(loc='upper left')
 
     salary_vector = np.zeros(gross_salary.size)
@@ -247,44 +292,34 @@ def main_func():
 
     axs[1].set_xlabel('Monthly gross income full-time [EUR/month]')
     axs[1].set_ylabel('Net income/hour [EUR/h]')
+
+    if optimal_salary_found:
+        axs[1].axvline(optimal_parameters[6, 0], color='k', linestyle='--')
+
     axs[1].plot(gross_salary, salary_vector, 'g')
 
     plt.tight_layout()
+
+    mplcursors.cursor()
     plt.show()
 
-    # show the plot
-    fig2 = plt.figure(1)
-    fig2.set_dpi(250)
-    ax = plt.axes(projection='3d')
-
-    hour_vector = np.linspace(0.1, full_time_hours * 1.5, gross_salary.size)
-    X, Y = np.meshgrid(gross_salary, hour_vector)
-    Z = np.zeros((gross_salary.size, hour_vector.size))
-
-    optimal_salary_found = False
-
-    for x in range(gross_salary.size):
-        for y in range(hour_vector.size):
-            # Monthly net income with the specified hours
-            Z[x][y] = calculate_annual_net_salary_and_taxes(gross_salary[x], hour_vector[y])[4]
-
-            if not optimal_salary_found and Z[x][y] > target_monthly_net_salary \
-                    and hour_vector[y] <= target_part_time_hours:
-                print('Gross salary for ' + str(target_monthly_net_salary) + ' net with '
-                      + str(hour_vector[y]) + 'hours: ' + str(gross_salary[x]))
-                optimal_salary_found = True
-
-    ax.set_xlabel('Monthly gross income full-time')
-    ax.set_ylabel('Working hours [h]')
-    ax.set_zlabel('Monthly net income [Euro/month]')
-
-    ax.contour3D(X, Y, Z, 50, cmap='inferno')
-
-    plt.tight_layout()
-    plt.show()
+    if optimal_salary_found:
+        print('Optimal results for monthly ' + str(target_monthly_net_salary) + ' net with '
+              + str(target_part_time_hours) + ' hours: ')
+        print('--------------------------------------------------')
+        print('Yearly gross income: ' + str(optimal_parameters[0, 0]))
+        print('Yearly income tax: ' + str(optimal_parameters[1, 0]))
+        print('Yearly insurance tax: ' + str(optimal_parameters[2, 0]))
+        print('Yearly net income: ' + str(optimal_parameters[3, 0]))
+        print('Monthly net income: ' + str(optimal_parameters[4, 0]))
+        print('Monthly gross income: ' + str(optimal_parameters[7, 0]))
+        print('Hourly net income: ' + str(optimal_parameters[5, 0]))
+        print('Hourly gross income: ' + str(optimal_parameters[6, 0]))
+        print('Difference net and gross income: ' +
+              str((1.0 - (optimal_parameters[3, 0] / optimal_parameters[0, 0])) * 100.0) + '%')
 
 
-# Press the green button in the gutter to run the script.
+# Press the gr een button in the gutter to run the script.
 if __name__ == '__main__':
     main_func()
 
